@@ -2,94 +2,121 @@
 //  ContentView.swift
 //  Memorize
 //
-//  Created by Stefan Tadić on 16. 6. 2025..
+//  Created by Stefan Tadić on 27. 6. 2025..
 //
 
 import SwiftUI
 
+// MARK: - Theme Struct
+struct Theme {
+    let name: String
+    let emojis: [String]
+    let numberOfPairs: Int
+    let symbolName: String // SF Symbol
+}
+
+// MARK: - Card Model
+struct Card: Identifiable {
+    let id: Int
+    let emoji: String
+    var isFaceUp: Bool = false
+}
+
+// MARK: - Main ContentView
 struct ContentView: View {
-    let emojis = ["🐌", "🐇", "🐷", "🦎", "🦙", "🦁", "🦃", "🦅", "🐵", "🫎", "🦋", "🦓"]
+    @State private var cards: [Card] = []
     
-    @State var cardCount: Int = 4
+    let themes: [Theme] = [
+        Theme(name: "Animals", emojis: ["🐌", "🐇", "🐷", "🦎", "🦙", "🦁", "🦃", "🦅", "🐵", "🦋", "🦓"], numberOfPairs: 4, symbolName: "hare.fill"),
+        Theme(name: "Fruits", emojis: ["🍎", "🍊", "🍋", "🍌", "🍉", "🍇", "🍓", "🍒", "🍑", "🍐"], numberOfPairs: 6, symbolName: "applelogo"),
+        Theme(name: "Faces", emojis: ["😍", "😁", "😂", "🙃", "😆", "😄", "😜", "😎", "🤓", "🤖"], numberOfPairs: 8, symbolName: "smiley.fill"),
+    ]
     
     var body: some View {
         NavigationStack {
             VStack {
+                Text("Memorize")
+                    .font(.title)
+                    .fontWeight(.bold)
+                    .foregroundColor(.primary)
+                    .padding(.horizontal)
+                    .padding(.top)
                 ScrollView {
-                    cards
-                    Spacer()
-                    cardCountAdjusters
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))]) {
+                        ForEach($cards) { $card in
+                            CardView(card: $card)
+                                .aspectRatio(2/3, contentMode: .fit)
+                        }
+                    }
+                    .padding()
                 }
-                .padding()
+                themeButtons
             }
-            .navigationBarTitle("Memorize!")
-            .font(.largeTitle)
-        }
-    }
-    
-    var cards: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))]) {
-            ForEach(0..<cardCount, id: \.self) { index in
-                CardView(content: emojis[index])
-                    .aspectRatio(2/3, contentMode: .fit)
+            .onAppear {
+                startGame(with: themes[0])
             }
         }
-        .foregroundColor(.orange)
     }
     
-    var cardCountAdjusters: some View {
-        HStack {
-            cardRemover
-            Spacer()
-            cardAdder
+    var themeButtons: some View {
+        HStack(spacing: 16) {
+            ForEach(themes, id: \.name) { theme in
+                Button(action: {
+                    startGame(with: theme)
+                }) {
+                    VStack {
+                        Image(systemName: theme.symbolName)
+                            .font(.largeTitle)
+                        Text(theme.name)
+                            .font(.caption)
+                            .lineLimit(1)
+                    }
+                    .padding(10)
+                    .frame(width: 90)
+                    .padding(.vertical, 8)
+                    .foregroundColor(.blue)
+                    .background(.ultraThinMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+            }
         }
-        .imageScale(.large)
-        .font(.largeTitle)
+        .padding(.bottom)
     }
     
-    func cardCountAdjuster(by offset: Int, symbol: String) -> some View {
-        Button(action: {
-            cardCount += offset
-        }, label: {
-            Image(systemName: symbol)
-        })
-        .disabled(cardCount + offset < 1 || cardCount + offset > emojis.count)
-    }
-    
-    var cardRemover: some View {
-        cardCountAdjuster(by: -1, symbol: "rectangle.stack.badge.minus.fill")
-    }
-    
-    var cardAdder: some View {
-        cardCountAdjuster(by: +1, symbol: "rectangle.stack.badge.plus.fill")
+    func startGame(with theme: Theme) {
+        let selected = theme.emojis.shuffled().prefix(theme.numberOfPairs)
+        let paired = Array(selected + selected).shuffled()
+        cards = paired.enumerated().map { index, emoji in
+            Card(id: index, emoji: emoji)
+        }
     }
 }
 
+// MARK: - Card View
 struct CardView: View {
-    let content: String
-    @State var isFaceUp = false
+    @Binding var card: Card
     
     var body: some View {
         ZStack {
-            let base = RoundedRectangle(cornerRadius: 12)
-            Group {
-                base.fill(.white)
-                base.strokeBorder(lineWidth: 2)
-                Text(content).font(.largeTitle)
+            let shape = RoundedRectangle(cornerRadius: 16)
+            if card.isFaceUp {
+                shape.fill(.white)
+                shape.strokeBorder(.orange, lineWidth: 3)
+                Text(card.emoji)
+                    .font(.largeTitle)
+            } else {
+                shape.fill(.orange)
             }
-            .opacity(isFaceUp ? 1 : 0)
-            base.fill().opacity(isFaceUp ? 0 : 1)
         }
         .onTapGesture {
-            isFaceUp.toggle()
+            card.isFaceUp.toggle()
         }
+        .padding(4)
     }
 }
 
-
-
-
-
+// MARK: - Preview
 #Preview {
     ContentView()
 }
+
